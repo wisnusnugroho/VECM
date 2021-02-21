@@ -9,7 +9,7 @@ library(stinepack)
 library(forecast)
 
 #input data
-adw <- read.table("W:/Kuliah/Khusus TESIS VEC VAR/syarat dan lainnya/Pasca Seminar/data/setelah covid/afco.txt", header = TRUE,fill=TRUE)
+adw <- read.table("VECM/afco.txt", header = TRUE,fill=TRUE)
 summary(adw)
 str(adw)
 head(adw)
