@@ -1,0 +1,95 @@
+graphics.off()
+library(tsDyn)
+library(vars)
+library(tseries)
+library(xts)
+library(imputeTS)
+library(missForest)
+library(stinepack)
+library(forecast)
+
+#input data
+adw <- read.table("W:/Kuliah/Khusus TESIS VEC VAR/syarat dan lainnya/Pasca Seminar/data/setelah covid/afco.txt", header = TRUE,fill=TRUE)
+summary(adw)
+str(adw)
+head(adw)
+plot.ts(adw)
+attach(adw)
+
+#Uji Non Linieritas
+terasvirta.test(ts(AFU))
+terasvirta.test(ts(RFU))
+terasvirta.test(ts(RS))
+terasvirta.test(ts(AS))
+terasvirta.test(ts(Kur))
+terasvirta.test(ts(Covid))
+
+#standar deviasi (sd)
+apply(adw,2,sd)
+
+#uji stasioner
+apply(adw,2,adf.test)
+apply(diff(adw),2,adf.test)
+
+#cointegrasi
+VARselect(adw, lag.max = 16, type = "both")
+var<-VARselect(adw, type = "both")
+nlags<-var$selection["AIC(n)"]
+#untuk nilai trace
+v1.CA <- ca.jo(adw, ecdet = "none", type = "trace", K=nlags,spec = "transitory")
+summary(v1.CA)
+#untuk nilai eigen
+v1.CAt <- ca.jo(adw, ecdet = "none", type = "eigen", K=nlags, spec = "transitory")
+summary(v1.CAt)
+
+#convert ke bentuk vec
+v1.CA.VEC <- cajorls(v1.CA , r = 1)
+#hasil convert vec
+summary(v1.CA.VEC$rlm)
+alpha<-coef(v1.CA.VEC$rlm)[1, ]
+alpha
+beta<-v1.CA.VEC$beta
+beta
+resids<-resid(v1.CA.VEC$rlm)
+View(resids)
+N<-nrow(resids)
+sigma<-crossprod(resids)/N
+fits <- fitted(v1.CA.VEC)
+
+#VECM Model
+Model1 <- VECM(adw, 4, r = 1, estim =("ML"))
+summary(Model1)
+data.frame(AIC=AIC(Model1),BIC=BIC(Model1))
+Model1$coefficients
+View(Model1$residuals) 
+t(Model1$model.specific$beta)
+
+#RMSE VECM model
+rmse3<-sqrt(mean(resids[,1]^2))
+rmse3
+rmse<-sqrt(mean(resids[,2]^2))
+rmse
+
+#Need to Transform VECM to VAR untuk melihat kelayakan model
+Model1var <- vec2var(v1.CA, r = 2)
+
+#Diagnostic Tests
+
+#Need to Transform VECM to VAR
+
+Model1VAR <- vec2var(ctest1t, r = 1)
+
+#Serial Correlation
+Serial1 <- serial.test(Model1VAR, lags.pt = 5, type = "PT.asymptotic")
+Serial1
+
+#ARCH Effects
+Arch1 <- arch.test(Model1VAR, lags.multi = 15, multivariate.only = TRUE)
+Arch1
+
+#Normality of Residuals
+Norm1 <- normality.test(Model1VAR, multivariate.only = TRUE)
+Norm1
+
+#Peramalan
+y<-predict(Model1var,adw, ci = 0.95, dumvar = NULL)
